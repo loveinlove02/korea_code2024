@@ -7,22 +7,35 @@
 #include <FirebaseESP8266.h>
 #endif
 
-
+//Provide the token generation process info.
 #include <addons/TokenHelper.h>
+
+//Provide the RTDB payload printing info and other helper functions.
 #include <addons/RTDBHelper.h>
 
+/* 1. Define the WiFi credentials */
 #define WIFI_SSID "soft"
 #define WIFI_PASSWORD "ss2420052"
 
-#define API_KEY "key"
+//#define WIFI_SSID "PISnet_4BDCD0"
+//#define WIFI_PASSWORD "leeinhwan9532"
+
+//For the following credentials, see examples/Authentications/SignInAsUser/EmailPassword/EmailPassword.ino
+
+/* 2. Define the API Key */
+#define API_KEY "AIzaSyCWJ3HGPA6KrG9zhm_eYbFroM7NNs1wjeo"
+
+/* 3. Define the RTDB URL */
 #define DATABASE_URL "https://sw02-7ded6.firebaseio.com" //<databaseName>.firebaseio.com or <databaseName>.<region>.firebasedatabase.app
 
+/* 4. Define the user Email and password that alreadey registerd or added in your project */
 #define USER_EMAIL "softplay008@gmail.com"
 #define USER_PASSWORD "swplay!@#"
 
-FirebaseData fbdo;    // 파이어베이스 변수(객체)
+//Define Firebase Data object
+FirebaseData fbdo;
 
-FirebaseAuth auth;     
+FirebaseAuth auth;
 FirebaseConfig config;
 
 #include <SoftwareSerial.h>
@@ -58,35 +71,40 @@ void setup()
 
   Serial.printf("Firebase Client v%s\n\n", FIREBASE_CLIENT_VERSION);
 
+  /* Assign the api key (required) */
   config.api_key = API_KEY;
 
+  /* Assign the user sign in credentials */
   auth.user.email = USER_EMAIL;
   auth.user.password = USER_PASSWORD;
 
+  /* Assign the RTDB URL (required) */
   config.database_url = DATABASE_URL;
 
+  /* Assign the callback function for the long running token generation task */
   config.token_status_callback = tokenStatusCallback; //see addons/TokenHelper.h
 
   Firebase.begin(&config, &auth);
 
+  //Comment or pass false value when WiFi reconnection will control by your code or third party library
   Firebase.reconnectWiFi(true);
-
   
   pinMode(trig, OUTPUT);    // 송신으로 연결된 핀을 OUTPUT으로 설정
   pinMode(echo, INPUT);     // 수신으로 연결된 핀을 INPUT으로 설정
 
-  mp3_set_serial(Serial);   // mp3 셋팅
-  delay(1);                 
-  mp3_set_volume(30);       // 소리 30
+  mp3_set_serial(Serial);
+  delay(1);
+  mp3_set_volume(30);
   
-  t1.setInterval(1000,fn1); // fn1 함수 1초에 한번씩 실행 설정
-  t2.setInterval(1000,fn2); // fn2 함수 1초에 한번씩 실행 설정
+  t1.setInterval(1000,fn1);
+  t2.setInterval(1000,fn2);
+  
 }
 
 void loop()
 {
-  t1.run();   // fn1 함수 시작
-  t2.run();   // fn2 함수 시작
+  t1.run();
+  t2.run();
 }
 
 void fn1(void) {
@@ -94,7 +112,6 @@ void fn1(void) {
   delayMicroseconds(10);        // 딜레이
   digitalWrite(trig, LOW);      // 초음파 신호 정지
 
-  // distance 변수에 거리값이 저장된다. 예를 들면 10, 30, 98...
   int distance = pulseIn(echo, HIGH) * 17 / 1000;
 
   // 측정된 거리 값를 시리얼 모니터에 출력합니다.
@@ -102,23 +119,22 @@ void fn1(void) {
   Serial.print(distance);
   Serial.println(" cm");
 
-  // 파이어베이스에 읽어온 값이 Y이면 mp3_onoff 변수의 값을 OFF로 저장한다.
   if(gate_state=="Y") {
     mp3_onoff = "OFF"; 
   }
-  
-  if(distance<30) {       // 거리가 30미만이면(게이트에 사람이 있으면) 
-    if(gate_state=="N") { // gate_state값이 N이면 인증을 안했다는 의미. Y이면 인증을 했다는 의미
+
+  if(distance<30) { 
+    if(gate_state=="N") {
       Serial.println("인증을 하지 않고 들어왔다. mp3_onoff를 ON으로 설정"); 
-      mp3_onoff = "ON";   // mp3_onoff 값을 ON으로 저장한다.
+      mp3_onoff = "ON"; 
     }
   }
 
-  if(mp3_onoff=="ON") {   // mp3_onoff 값이 ON이면 mp3 작동
+  if(mp3_onoff=="ON") {
     Serial.println("MP3를 울립니다.");
     mp3_play(1);
     delay(2000);    
-  } else if(mp3_onoff=="OFF") { // mp3_onoff 값이 OFF이면 mp3 끄기
+  } else if(mp3_onoff=="OFF") {
     Serial.println("MP3를 끕니다");
     mp3_stop();     
   }
@@ -127,14 +143,27 @@ void fn1(void) {
 }
 
 void fn2(void) {
-  // 파이어베이스의 umbrella_gate/gate_state 의 값을 가져온다. aNb 또는 aYb가 되는데
-  // N, Y를 얻기위해서 aNb에서 a+1 부터 b-1까지 잘라서 gate_state 변수에 넣는다.
   gate_state = Firebase.getString(fbdo, "umbrella_gate/gate_state") ? fbdo.to<const char *>() : fbdo.errorReason().c_str();    
   gate_state = gate_state.substring(gate_state.indexOf("a")+1, gate_state.indexOf("b"));
-
-  // 결과 출력
+  
   Serial.print("gate_state: ");
   Serial.println(gate_state);   // N
 
 }
+
+
+// D3 : 3
+// D4 : 4
+// D5 : 14
+// D6 : 12
+// D7 : 13
+// weoms d1 r1
+
+// D8 - 15
+// D7 - 13
+// D6 - 12 (온습도)
+// D5 - 14 x
+// D4 - 2  x
+// A0 - gas
+
 ```
